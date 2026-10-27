@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級服務與娛樂平台</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        arcade: ['Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        .neon-border {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5), inset 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+        .neon-text {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 10px rgba(236, 72, 153, 0.8), 0 0 20px rgba(236, 72, 153, 0.4);
+        }
+        #gameCanvas {
+            background: radial-gradient(circle at center, #111827 0%, #030712 100%);
+            touch-action: none;
+            display: block;
+        }
+        .arcade-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+        }
+        .arcade-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+        .arcade-btn:active {
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between py-6 px-3 sm:px-6 lg:px-8">
+
+    <div class="max-w-4xl mx-auto w-full space-y-6">
+        
+        <!-- Navigation Bar / Tabs -->
+        <div class="flex bg-slate-900 border border-slate-800 p-1.5 rounded-2xl shadow-xl justify-center gap-2">
+            <button id="tabOrderBtn" onclick="switchTab('order')" class="flex-1 py-3 px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition bg-blue-600 text-white shadow-lg">
+                <i class="fa-solid fa-utensils text-orange-400"></i>
+                班級訂餐統計系統
+            </button>
+            <button id="tabGameBtn" onclick="switchTab('game')" class="flex-1 py-3 px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition bg-slate-800 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-gamepad text-blue-400"></i>
+                Neon Breakout 遊戲
+            </button>
+        </div>
+
+        <!-- TAB 1: 班級訂餐統計系統 -->
+        <div id="orderSection" class="space-y-6">
+            <!-- Header -->
+            <header class="bg-slate-900 rounded-2xl shadow-md p-6 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center justify-center sm:justify-start gap-2">
+                        <i class="fa-solid fa-utensils text-orange-500"></i>
+                        班級訂餐統計系統
+                    </h1>
+                    <p class="text-slate-400 text-sm mt-1">原生 JavaScript + HTML5 + CSS3 開發</p>
+                </div>
+                <button onclick="resetAllOrders()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 border border-slate-700">
+                    <i class="fa-solid fa-rotate-right"></i> 重置全班訂單
+                </button>
+            </header>
+
+            <!-- 1. 菜單管理 Display Menu -->
+            <section class="bg-slate-900 rounded-2xl shadow-md p-6 border border-slate-800">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-blue-500"></i>
+                    1. 菜單管理 (內建 5 項餐點)
+                </h2>
+                <div id="menuContainer" class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <!-- Menu items dynamically rendered via JS -->
+                </div>
+            </section>
+
+            <!-- 2 & 3. 訂餐登記與驗證 -->
+            <section class="bg-slate-900 rounded-2xl shadow-md p-6 border border-slate-800">
+                <h2 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-emerald-500"></i>
+                    2. 訂餐登記 (座號 1~50，座號 0 結束)
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    * 輸入驗證說明：座號限定 1~50、餐點編號限定 1~5。輸入不合法時系統將提示並要求重新輸入，程式不當掉。輸入座號 0 即完成/結束登記。
+                </p>
+
+                <form id="orderForm" onsubmit="handleOrderSubmit(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="seatInput" class="block text-sm font-medium text-slate-300 mb-1">
+                                學生座號 (1~50，輸入 0 結束):
+                            </label>
+                            <input type="number" id="seatInput" placeholder="請輸入座號 (0~50)" 
+                                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label for="mealInput" class="block text-sm font-medium text-slate-300 mb-1">
+                                餐點編號 (1~5):
+                            </label>
+                            <input type="number" id="mealInput" placeholder="請輸入餐點編號 (1~5)" 
+                                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                        </div>
+                    </div>
+
+                    <!-- Alert Message Box -->
+                    <div id="alertBox" class="hidden p-3 rounded-xl text-sm font-medium transition-all"></div>
+
+                    <div class="flex gap-3">
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> 新增 / 登記訂單
+                        </button>
+                        <button type="button" onclick="finishOrdering()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check"></i> 輸入 0 結算
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 4. 結算報表 Report Section -->
+            <section class="bg-slate-900 rounded-2xl shadow-md p-6 border border-slate-800">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-purple-500"></i>
+                        4. 結算報表
+                    </h2>
+                    <span class="text-xs font-semibold bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1 rounded-full">
+                        即時自動計算
+                    </span>
+                </div>
+
+                <!-- Total Overview Badges -->
+                <div class="grid grid-cols-2 sm:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-slate-800/50 border border-slate-700/80 rounded-xl p-4 text-center">
+                        <span class="text-xs text-slate-400 block mb-1">總訂餐筆數</span>
+                        <span id="totalOrdersCount" class="text-2xl font-black text-white">0</span>
+                        <span class="text-xs text-slate-400">筆</span>
+                    </div>
+                    <div class="bg-emerald-950/30 border border-emerald-800/50 rounded-xl p-4 text-center">
+                        <span class="text-xs text-emerald-400 font-medium block mb-1">全班總金額</span>
+                        <span id="totalAmount" class="text-2xl font-black text-emerald-400">$0</span>
+                    </div>
+                </div>
+
+                <!-- Items Summary Table -->
+                <div class="overflow-x-auto mb-6">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-slate-800 text-slate-400 uppercase text-xs font-bold">
+                                <th class="p-3 rounded-l-lg">編號</th>
+                                <th class="p-3">餐點名稱</th>
+                                <th class="p-3 text-right">單價</th>
+                                <th class="p-3 text-center">訂購數量</th>
+                                <th class="p-3 text-right rounded-r-lg">小計</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody" class="divide-y divide-slate-800">
+                            <!-- Table rows populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Detailed Log List -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-300 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-slate-500"></i> 已登記明細 (最新在上)
+                    </h3>
+                    <div id="orderLogList" class="max-h-48 overflow-y-auto space-y-2 pr-1 text-sm text-slate-300">
+                        <p class="text-slate-500 text-xs italic">尚無訂餐紀錄</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 2: NEON BREAKOUT ARCADE GAME -->
+        <div id="gameSection" class="hidden space-y-4">
+            <!-- Header / HUD Bar -->
+            <header class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-2xl flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/50 flex items-center justify-center text-blue-400 font-bold text-xl neon-text">
+                        <i class="fa-solid fa-gamepad"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg sm:text-xl tracking-wider text-white neon-text">NEON BREAKOUT</h1>
+                        <p class="text-xs text-slate-400">Classic Arcade Edition</p>
+                    </div>
+                </div>
+
+                <!-- Stats Container -->
+                <div class="flex items-center gap-3 sm:gap-6 text-sm font-arcade">
+                    <div class="bg-slate-800/80 border border-slate-700/60 px-3 py-1.5 rounded-xl flex flex-col items-center">
+                        <span class="text-xs text-slate-400 uppercase">Score</span>
+                        <span id="scoreVal" class="text-amber-400 font-bold text-base sm:text-lg">0</span>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700/60 px-3 py-1.5 rounded-xl flex flex-col items-center">
+                        <span class="text-xs text-slate-400 uppercase">Lives</span>
+                        <span id="livesVal" class="text-rose-400 font-bold text-base sm:text-lg">3</span>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700/60 px-3 py-1.5 rounded-xl flex flex-col items-center">
+                        <span class="text-xs text-slate-400 uppercase">Level</span>
+                        <span id="levelVal" class="text-emerald-400 font-bold text-base sm:text-lg">1</span>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700/60 px-3 py-1.5 rounded-xl flex flex-col items-center hidden sm:flex">
+                        <span class="text-xs text-slate-400 uppercase">High Score</span>
+                        <span id="highScoreVal" class="text-purple-400 font-bold text-base sm:text-lg">0</span>
+                    </div>
+                </div>
+
+                <!-- Controls Buttons Top Right -->
+                <div class="flex items-center gap-2">
+                    <button id="pauseBtn" onclick="togglePause()" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-300 transition" title="Pause / Resume">
+                        <i class="fa-solid fa-pause" id="pauseIcon"></i>
+                    </button>
+                    <button onclick="toggleMute()" id="soundBtn" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-300 transition" title="Toggle Sound">
+                        <i class="fa-solid fa-volume-high" id="soundIcon"></i>
+                    </button>
+                    <button onclick="openInfoModal()" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-slate-300 transition" title="How to Play">
+                        <i class="fa-solid fa-circle-question"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Game Area -->
+            <main class="relative w-full aspect-[4/3] sm:aspect-[16/10] bg-slate-950 border-2 border-blue-500/30 rounded-2xl overflow-hidden neon-border shadow-2xl flex items-center justify-center">
+                
+                <canvas id="gameCanvas" class="w-full h-full"></canvas>
+
+                <!-- Start Screen Overlay -->
+                <div id="startScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+                    <div class="w-20 h-20 rounded-2xl bg-blue-600/20 border-2 border-blue-500 flex items-center justify-center text-blue-400 text-3xl mb-4 neon-text animate-pulse">
+                        <i class="fa-solid fa-cube"></i>
+                    </div>
+                    <h2 class="text-3xl sm:text-5xl font-extrabold tracking-wider text-white mb-2 neon-text">NEON BREAKOUT</h2>
+                    <p class="text-slate-400 max-w-md text-sm sm:text-base mb-8">
+                        摧毀所有磚塊，收集強力道具，挑戰最高得分！支援鍵盤、滑鼠與觸控操作。
+                    </p>
+                    <button onclick="startGame()" class="arcade-btn text-white font-bold px-8 py-4 rounded-xl text-lg flex items-center gap-3">
+                        <i class="fa-solid fa-play"></i> 開始遊戲 (START GAME)
+                    </button>
+                </div>
+
+                <!-- Pause Menu Overlay -->
+                <div id="pauseScreen" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+                    <h2 class="text-3xl font-bold text-white mb-6 neon-text">遊戲暫停</h2>
+                    <div class="flex flex-col gap-4 w-48">
+                        <button onclick="togglePause()" class="arcade-btn text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-play"></i> 繼續遊戲
+                        </button>
+                        <button onclick="restartGame()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-rotate-right"></i> 重新開始
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Game Over Overlay -->
+                <div id="gameOverScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+                    <div class="w-16 h-16 rounded-2xl bg-rose-600/20 border-2 border-rose-500 flex items-center justify-center text-rose-400 text-2xl mb-4">
+                        <i class="fa-solid fa-skull"></i>
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-rose-500 mb-2 neon-text-pink">遊戲結束</h2>
+                    <p class="text-slate-400 mb-6 text-sm">再接再厲！發揮你的實力挑戰更高分。</p>
+                    
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl mb-6 w-64 flex justify-around text-center">
+                        <div>
+                            <span class="text-xs text-slate-400 block">最終得分</span>
+                            <span id="finalScore" class="text-amber-400 text-xl font-bold font-arcade">0</span>
+                        </div>
+                        <div class="border-r border-slate-800"></div>
+                        <div>
+                            <span class="text-xs text-slate-400 block">最高紀錄</span>
+                            <span id="finalHighScore" class="text-purple-400 text-xl font-bold font-arcade">0</span>
+                        </div>
+                    </div>
+
+                    <button onclick="restartGame()" class="arcade-btn text-white font-bold px-8 py-3.5 rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> 再次挑戰
+                    </button>
+                </div>
+
+                <!-- Victory Overlay -->
+                <div id="victoryScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+                    <div class="w-16 h-16 rounded-2xl bg-emerald-600/20 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 text-2xl mb-4 animate-bounce">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <h2 id="victoryTitle" class="text-3xl sm:text-4xl font-extrabold text-emerald-400 mb-2">關卡完成！</h2>
+                    <p id="victoryDesc" class="text-slate-400 mb-6 text-sm">太神啦！你成功清理了所有磚塊！</p>
+                    <button id="nextLevelBtn" onclick="nextLevel()" class="arcade-btn text-white font-bold px-8 py-3.5 rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-forward"></i> 進入下一關
+                    </button>
+                </div>
+
+            </main>
+        </div>
+
+    </div>
+
+    <!-- Info / How to Play Modal -->
+    <div id="infoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="closeInfoModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-blue-500"></i> 遊戲說明與規則
+            </h3>
+            <ul class="space-y-3 text-sm text-slate-300 mb-6">
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-angles-right text-blue-400 mt-1"></i>
+                    <span><strong>移動滑板：</strong> 使用滑鼠指標、觸控拖曳或鍵盤方向鍵（← / → 或 A / D）移動底部滑板。</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-angles-right text-blue-400 mt-1"></i>
+                    <span><strong>通關條件：</strong> 清除畫面上所有磚塊即可晉級下一關，隨著關卡提升，球速會加快。</span>
+                </li>
+            </ul>
+            <button onclick="closeInfoModal()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-2.5 rounded-xl transition">
+                關閉視窗
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="msgToast" class="fixed bottom-6 right-6 bg-slate-900 border border-blue-500/50 text-white px-5 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 transform translate-y-20 opacity-0 flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-lg" id="msgIcon"></i>
+        <span id="msgText" class="text-sm font-medium">提示訊息</span>
+    </div>
+
+    <!-- Combined Scripts -->
+    <script>
+        // --- Tab Switcher ---
+        function switchTab(tab) {
+            const orderSec = document.getElementById('orderSection');
+            const gameSec = document.getElementById('gameSection');
+            const orderBtn = document.getElementById('tabOrderBtn');
+            const gameBtn = document.getElementById('tabGameBtn');
+
+            if (tab === 'order') {
+                orderSec.classList.remove('hidden');
+                gameSec.classList.add('hidden');
+                orderBtn.className = "flex-1 py-3 px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition bg-blue-600 text-white shadow-lg";
+                gameBtn.className = "flex-1 py-3 px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition bg-slate-800 text-slate-400 hover:text-white";
+                if (gameState === 'PLAYING') togglePause();
+            } else {
+                orderSec.classList.add('hidden');
+                gameSec.classList.remove('hidden');
+                gameBtn.className = "flex-1 py-3 px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition bg-blue-600 text-white shadow-lg";
+                orderBtn.className = "flex-1 py-3 px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition bg-slate-800 text-slate-400 hover:text-white";
+                resizeCanvas();
+            }
+        }
+
+        // --- ORDER SYSTEM LOGIC ---
+        const MENU = [
+            { id: 1, name: "排骨便當", price: 80, icon: "fa-drumstick-bite" },
+            { id: 2, name: "雞腿便當", price: 85, icon: "fa-utensils" },
+            { id: 3, name: "素食便當", price: 70, icon: "fa-carrot" },
+            { id: 4, name: "滷肉飯",   price: 55, icon: "fa-bowl-rice" },
+            { id: 5, name: "貢丸湯",   price: 20, icon: "fa-bowl-food" }
+        ];
+
+        let orderLog = [];
+
+        function renderMenu() {
+            const container = document.getElementById('menuContainer');
+            container.innerHTML = MENU.map(item => `
+                <div class="bg-slate-800/60 border border-slate-700 hover:border-blue-500 rounded-xl p-3 text-center transition shadow-sm">
+                    <div class="text-blue-400 text-lg mb-1">
+                        <i class="fa-solid ${item.icon}"></i>
+                    </div>
+                    <div class="text-xs text-slate-500 font-bold mb-0.5">#${item.id}</div>
+                    <div class="font-bold text-white text-sm">${item.name}</div>
+                    <div class="text-xs text-orange-400 font-semibold mt-1">$${item.price} 元</div>
+                </div>
+            `).join('');
+        }
+
+        function showAlert(msg, isError = true) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.classList.remove('hidden', 'bg-red-950/80', 'text-red-300', 'border-red-800', 'bg-emerald-950/80', 'text-emerald-300', 'border-emerald-800');
+            alertBox.classList.add('border');
+
+            if (isError) {
+                alertBox.classList.add('bg-red-950/80', 'text-red-300', 'border-red-800');
+                alertBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msg}`;
+            } else {
+                alertBox.classList.add('bg-emerald-950/80', 'text-emerald-300', 'border-emerald-800');
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> ${msg}`;
+            }
+        }
+
+        function clearAlert() {
+            document.getElementById('alertBox').classList.add('hidden');
+        }
+
+        function handleOrderSubmit(event) {
+            event.preventDefault();
+            clearAlert();
+
+            const seatInput = document.getElementById('seatInput');
+            const mealInput = document.getElementById('mealInput');
+
+            const seatVal = seatInput.value.trim();
+            const mealVal = mealInput.value.trim();
+
+            if (seatVal === '') {
+                showAlert("請輸入座號！", true);
+                seatInput.focus();
+                return;
+            }
+
+            const seatNum = parseInt(seatVal, 10);
+
+            if (seatNum === 0) {
+                finishOrdering();
+                return;
+            }
+
+            if (isNaN(seatNum) || seatNum < 1 || seatNum > 50) {
+                showAlert(`座號 [${seatVal}] 不合法！座號必須介於 1 到 50 之間（輸入 0 結算）。`, true);
+                seatInput.focus();
+                return;
+            }
+
+            if (mealVal === '') {
+                showAlert("請輸入餐點編號！", true);
+                mealInput.focus();
+                return;
+            }
+
+            const mealNum = parseInt(mealVal, 10);
+            const matchedMeal = MENU.find(item => item.id === mealNum);
+
+            if (!matchedMeal) {
+                showAlert(`餐點編號 [${mealVal}] 不存在！請輸入有效的菜單編號 (1 ~ ${MENU.length})。`, true);
+                mealInput.focus();
+                return;
+            }
+
+            orderLog.push({
+                seat: seatNum,
+                mealId: mealNum,
+                timestamp: new Date().toLocaleTimeString()
+            });
+
+            showAlert(`成功登記：${seatNum} 號同學 點購【${matchedMeal.name}】$${matchedMeal.price} 元`, false);
+
+            seatInput.value = '';
+            mealInput.value = '';
+            seatInput.focus();
+
+            updateReport();
+        }
+
+        function finishOrdering() {
+            document.getElementById('seatInput').value = '';
+            document.getElementById('mealInput').value = '';
+            showAlert(`訂餐登記已結束！全班共計 ${orderLog.length} 筆訂單，請查看下方結算報表。`, false);
+            updateReport();
+        }
+
+        function updateReport() {
+            const tableBody = document.getElementById('reportTableBody');
+            const totalOrdersEl = document.getElementById('totalOrdersCount');
+            const totalAmountEl = document.getElementById('totalAmount');
+            const logListEl = document.getElementById('orderLogList');
+
+            let totalClassAmount = 0;
+
+            tableBody.innerHTML = MENU.map(item => {
+                const count = orderLog.filter(ord => ord.mealId === item.id).length;
+                const subtotal = count * item.price;
+                totalClassAmount += subtotal;
+
+                return `
+                    <tr class="hover:bg-slate-800/50 transition">
+                        <td class="p-3 font-mono font-bold text-slate-500">#${item.id}</td>
+                        <td class="p-3 font-semibold text-white">${item.name}</td>
+                        <td class="p-3 text-right text-slate-400">$${item.price}</td>
+                        <td class="p-3 text-center font-bold ${count > 0 ? 'text-blue-400 bg-blue-950/40 rounded-lg' : 'text-slate-600'}">${count}</td>
+                        <td class="p-3 text-right font-bold text-white">$${subtotal}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            totalOrdersEl.textContent = orderLog.length;
+            totalAmountEl.textContent = `$${totalClassAmount}`;
+
+            if (orderLog.length === 0) {
+                logListEl.innerHTML = `<p class="text-slate-500 text-xs italic">尚無訂餐紀錄</p>`;
+            } else {
+                logListEl.innerHTML = [...orderLog].reverse().map(ord => {
+                    const meal = MENU.find(m => m.id === ord.mealId);
+                    return `
+                        <div class="flex items-center justify-between p-2.5 bg-slate-800/40 border border-slate-700/60 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs">
+                                    ${ord.seat}
+                                </span>
+                                <span class="font-medium text-white">${ord.seat} 號座號</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-blue-400 font-semibold">${meal.name} ($${meal.price})</span>
+                                <span class="text-xs text-slate-500">${ord.timestamp}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function resetAllOrders() {
+            orderLog = [];
+            document.getElementById('seatInput').value = '';
+            document.getElementById('mealInput').value = '';
+            clearAlert();
+            updateReport();
+            showAlert("已成功清空所有訂購紀錄！", false);
+        }
+
+        // --- GAME ENGINE LOGIC ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const scoreEl = document.getElementById('scoreVal');
+        const livesEl = document.getElementById('livesVal');
+        const levelEl = document.getElementById('levelVal');
+        const highScoreEl = document.getElementById('highScoreVal');
+
+        const startScreen = document.getElementById('startScreen');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const victoryScreen = document.getElementById('victoryScreen');
+
+        let gameState = 'START';
+        let score = 0, lives = 3, level = 1;
+        let highScore = localStorage.getItem('neon_breakout_highscore') || 0;
+        let soundEnabled = true;
+
+        highScoreEl.textContent = highScore;
+
+        const VIRTUAL_WIDTH = 800;
+        const VIRTUAL_HEIGHT = 600;
+
+        function resizeCanvas() {
+            canvas.width = VIRTUAL_WIDTH;
+            canvas.height = VIRTUAL_HEIGHT;
+        }
+
+        let paddle = {
+            width: 120, height: 16, x: VIRTUAL_WIDTH / 2 - 60, y: VIRTUAL_HEIGHT - 40,
+            dx: 0, speed: 9, targetX: VIRTUAL_WIDTH / 2 - 60
+        };
+
+        let balls = [];
+        function createBall(x, y, dx, dy) {
+            return {
+                x: x || paddle.x + paddle.width / 2,
+                y: y || paddle.y - 12,
+                radius: 8,
+                dx: dx !== undefined ? dx : 4,
+                dy: dy !== undefined ? dy : -4,
+                speed: 5.5
+            };
+        }
+
+        let bricks = [];
+        let brickRowCount = 5, brickColumnCount = 8;
+        let brickWidth = 85, brickHeight = 24, brickPadding = 12;
+        let brickOffsetTop = 70, brickOffsetLeft = 55;
+
+        const brickColors = [
+            { border: '#f43f5e', fill: '#fda4af', points: 50 },
+            { border: '#f97316', fill: '#fdba74', points: 40 },
+            { border: '#eab308', fill: '#fde047', points: 30 },
+            { border: '#10b981', fill: '#6ee7b7', points: 20 },
+            { border: '#3b82f6', fill: '#93c5fd', points: 10 }
+        ];
+
+        let powerUps = [];
+        let particles = [];
+
+        function initBricks() {
+            bricks = [];
+            const totalWidthAvailable = VIRTUAL_WIDTH - (brickOffsetLeft * 2);
+            brickWidth = (totalWidthAvailable - (brickColumnCount - 1) * brickPadding) / brickColumnCount;
+
+            for (let c = 0; c < brickColumnCount; c++) {
+                bricks[c] = [];
+                for (let r = 0; r < brickRowCount; r++) {
+                    bricks[c][r] = {
+                        x: c * (brickWidth + brickPadding) + brickOffsetLeft,
+                        y: r * (brickHeight + brickPadding) + brickOffsetTop,
+                        status: 1,
+                        color: brickColors[r % brickColors.length]
+                    };
+                }
+            }
+        }
+
+        function startGame() {
+            score = 0; lives = 3; level = 1;
+            updateHUD();
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            victoryScreen.classList.add('hidden');
+            resetLevel();
+            gameState = 'PLAYING';
+        }
+
+        function resetLevel() {
+            paddle.width = 120;
+            paddle.x = VIRTUAL_WIDTH / 2 - paddle.width / 2;
+            balls = [createBall()];
+            powerUps = []; particles = [];
+            initBricks();
+        }
+
+        function restartGame() {
+            gameOverScreen.classList.add('hidden');
+            victoryScreen.classList.add('hidden');
+            startGame();
+        }
+
+        function togglePause() {
+            if (gameState === 'PLAYING') {
+                gameState = 'PAUSED';
+                pauseScreen.classList.remove('hidden');
+            } else if (gameState === 'PAUSED') {
+                gameState = 'PLAYING';
+                pauseScreen.classList.add('hidden');
+            }
+        }
+
+        function updateHUD() {
+            scoreEl.textContent = score;
+            livesEl.textContent = lives;
+            levelEl.textContent = level;
+            highScoreEl.textContent = highScore;
+        }
+
+        let rightPressed = false, leftPressed = false;
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowRight' || e.key === 'd') rightPressed = true;
+            if (e.key === 'ArrowLeft' || e.key === 'a') leftPressed = true;
+        });
+        document.addEventListener('keyup', e => {
+            if (e.key === 'ArrowRight' || e.key === 'd') rightPressed = false;
+            if (e.key === 'ArrowLeft' || e.key === 'a') leftPressed = false;
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            if (gameState !== 'PLAYING') return;
+            const rect = canvas.getBoundingClientRect();
+            paddle.targetX = ((e.clientX - rect.left) * (VIRTUAL_WIDTH / rect.width)) - paddle.width / 2;
+        });
+
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            if (rightPressed) paddle.targetX += paddle.speed * 1.5;
+            if (leftPressed) paddle.targetX -= paddle.speed * 1.5;
+
+            paddle.targetX = Math.max(10, Math.min(VIRTUAL_WIDTH - paddle.width - 10, paddle.targetX));
+            paddle.x += (paddle.targetX - paddle.x) * 0.3;
+
+            for (let i = balls.length - 1; i >= 0; i--) {
+                let ball = balls[i];
+                ball.x += ball.dx; ball.y += ball.dy;
+
+                if (ball.x - ball.radius < 0 || ball.x + ball.radius > VIRTUAL_WIDTH) ball.dx = -ball.dx;
+                if (ball.y - ball.radius < 0) ball.dy = -ball.dy;
+
+                if (ball.y + ball.radius >= paddle.y && ball.x >= paddle.x && ball.x <= paddle.x + paddle.width) {
+                    ball.dy = -Math.abs(ball.dy);
+                }
+
+                if (ball.y - ball.radius > VIRTUAL_HEIGHT) {
+                    balls.splice(i, 1);
+                    if (balls.length === 0) {
+                        lives--; updateHUD();
+                        if (lives <= 0) {
+                            gameState = 'GAMEOVER';
+                            gameOverScreen.classList.remove('hidden');
+                            document.getElementById('finalScore').textContent = score;
+                            document.getElementById('finalHighScore').textContent = highScore;
+                        } else {
+                            balls.push(createBall());
+                        }
+                    }
+                }
+
+                for (let c = 0; c < brickColumnCount; c++) {
+                    for (let r = 0; r < brickRowCount; r++) {
+                        let b = bricks[c][r];
+                        if (b.status === 1) {
+                            if (ball.x > b.x && ball.x < b.x + brickWidth && ball.y > b.y && ball.y < b.y + brickHeight) {
+                                ball.dy = -ball.dy;
+                                b.status = 0;
+                                score += b.color.points;
+                                if (score > highScore) {
+                                    highScore = score;
+                                    localStorage.setItem('neon_breakout_highscore', highScore);
+                                }
+                                updateHUD();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    let b = bricks[c][r];
+                    if (b.status === 1) {
+                        ctx.fillStyle = b.color.fill;
+                        ctx.fillRect(b.x, b.y, brickWidth, brickHeight);
+                    }
+                }
+            }
+
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+
+            for (let ball of balls) {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#60a5fa';
+                ctx.fill();
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function() {
+            renderMenu();
+            updateReport();
+            resizeCanvas();
+            initBricks();
+            requestAnimationFrame(gameLoop);
+        };
+
+        function openInfoModal() { document.getElementById('infoModal').classList.remove('hidden'); }
+        function closeInfoModal() { document.getElementById('infoModal').classList.add('hidden'); }
+    </script>
+</body>
+</html>
