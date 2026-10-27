@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級訂餐統計系統</title>
+    <!-- 使用 Tailwind CSS CDN 提供現代優雅的視覺外觀 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-6 md:p-10">
+
+    <div class="max-w-4xl mx-auto space-y-8">
+        <!-- 標頭 -->
+        <header class="text-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">🍱 班級訂餐統計系統</h1>
+            <p class="text-slate-500 mt-2 text-sm">輸入座號與餐點編號即可輕鬆登記，自動彙整班級訂餐總額與報表</p>
+        </header>
+
+        <!-- 1. 菜單展示區 -->
+        <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <span class="p-1.5 bg-amber-100 text-amber-700 rounded-lg text-lg">📋</span>
+                1. 菜單管理 (啟動時完整顯示)
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="menuGrid">
+                <!-- 菜單項目將透過 JavaScript 動態渲染 -->
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- 2. 訂餐登記區 -->
+            <section class="lg:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 h-fit">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <span class="p-1.5 bg-blue-100 text-blue-700 rounded-lg text-lg">✍️</span>
+                    2. 訂餐登記
+                </h2>
+
+                <form id="orderForm" onsubmit="handleOrderSubmit(event)" class="space-y-4">
+                    <div>
+                        <label for="seatNumber" class="block text-sm font-semibold text-slate-700 mb-1">
+                            座號 <span class="text-xs font-normal text-slate-400">(範圍: 1 ~ 50，輸入 0 結束登記)</span>
+                        </label>
+                        <input type="number" id="seatNumber" min="0" max="50" required
+                            placeholder="請輸入座號 (1-50)"
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    </div>
+
+                    <div>
+                        <label for="itemId" class="block text-sm font-semibold text-slate-700 mb-1">
+                            餐點編號 <span class="text-xs font-normal text-slate-400">(範圍: 1 ~ 5)</span>
+                        </label>
+                        <input type="number" id="itemId" min="1" max="5"
+                            placeholder="請輸入餐點編號 (1-5)"
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    </div>
+
+                    <!-- 3. 輸入驗證提示/錯誤訊息區域 -->
+                    <div id="alertBox" class="hidden p-3 text-sm rounded-xl transition-all"></div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button type="submit" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium py-2.5 px-4 rounded-xl transition-colors shadow-sm shadow-blue-200 flex items-center justify-center gap-1">
+                            加入訂單
+                        </button>
+                        <button type="button" onclick="endOrderingProcess()"
+                            class="bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium py-2.5 px-4 rounded-xl transition-colors">
+                            結束訂餐 (座號0)
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mt-6 pt-4 border-t border-slate-100">
+                    <button onclick="clearAllOrders()" class="w-full py-2 text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors">
+                        🗑️ 清空所有點餐紀錄
+                    </button>
+                </div>
+            </section>
+
+            <!-- 點餐明細記錄 -->
+            <section class="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <span class="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-lg">📝</span>
+                    即時訂餐明細
+                </h2>
+                <div class="overflow-x-auto max-h-[320px] overflow-y-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="sticky top-0 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            <tr>
+                                <th class="py-2.5 px-3">座號</th>
+                                <th class="py-2.5 px-3">點餐品項</th>
+                                <th class="py-2.5 px-3 text-right">單價</th>
+                                <th class="py-2.5 px-3 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderLogBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- 明細將透過 JS 動態新增 -->
+                        </tbody>
+                    </table>
+                    <div id="emptyLogPrompt" class="text-center py-8 text-slate-400 text-sm">
+                        尚未加入任何訂單紀錄
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 4. 結算報表區 -->
+        <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-4 border-b border-slate-100 gap-2">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <span class="p-1.5 bg-purple-100 text-purple-700 rounded-lg text-lg">📊</span>
+                    4. 結算報表
+                </h2>
+                <div class="flex gap-4 text-sm font-semibold">
+                    <div class="bg-slate-100 px-3 py-1.5 rounded-lg">
+                        總訂餐筆數：<span id="totalOrderCount" class="text-blue-600">0</span> 筆
+                    </div>
+                    <div class="bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-100">
+                        全班總金額：<span id="grandTotal" class="text-emerald-600 font-bold text-lg">0</span> 元
+                    </div>
+                </div>
+            </div>
+
+            <!-- 品項統計表格 -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            <th class="py-3 px-4">編號</th>
+                            <th class="py-3 px-4">餐點名稱</th>
+                            <th class="py-3 px-4 text-right">單價</th>
+                            <th class="py-3 px-4 text-center">訂購數量</th>
+                            <th class="py-3 px-4 text-right">小計</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody" class="divide-y divide-slate-100 text-sm">
+                        <!-- 結算報表資料 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- JavaScript 邏輯實作 -->
+    <script>
+        // 1. 內建 5 項菜單資料
+        const menuItems = [
+            { id: 1, name: "排骨便當", price: 80, icon: "🍱" },
+            { id: 2, name: "雞腿便當", price: 85, icon: "🍗" },
+            { id: 3, name: "素食便當", price: 70, icon: "🥗" },
+            { id: 4, name: "滷肉飯", price: 55, icon: "🍚" },
+            { id: 5, name: "貢丸湯", price: 20, icon: "🥣" }
+        ];
+
+        // 訂單狀態儲存陣列
+        let orders = [];
+
+        // 初始化頁面
+        window.onload = function() {
+            renderMenu();
+            renderReport();
+            updateLogTable();
+        };
+
+        // 1. 渲染菜單
+        function renderMenu() {
+            const menuGrid = document.getElementById('menuGrid');
+            menuGrid.innerHTML = menuItems.map(item => `
+                <div onclick="quickSelectMenu(${item.id})" class="cursor-pointer bg-slate-50 border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/50 p-4 rounded-xl transition-all flex items-center justify-between group">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">${item.icon}</span>
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 block">${item.id}.</span>
+                            <span class="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">${item.name}</span>
+                        </div>
+                    </div>
+                    <span class="text-blue-600 font-bold bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-sm">
+                        $${item.price}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // 快捷點選菜單項
+        function quickSelectMenu(itemId) {
+            document.getElementById('itemId').value = itemId;
+            document.getElementById('seatNumber').focus();
+        }
+
+        // 顯示提示訊息 (防呆驗證)
+        function showAlert(message, type = 'error') {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.classList.remove('hidden', 'bg-red-50', 'text-red-700', 'bg-amber-50', 'text-amber-700', 'bg-green-50', 'text-green-700');
+            
+            if (type === 'error') {
+                alertBox.classList.add('bg-red-50', 'text-red-700', 'border', 'border-red-200');
+            } else if (type === 'warning') {
+                alertBox.classList.add('bg-amber-50', 'text-amber-700', 'border', 'border-amber-200');
+            } else {
+                alertBox.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
+            }
+            
+            alertBox.innerText = message;
+        }
+
+        function hideAlert() {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.classList.add('hidden');
+        }
+
+        // 2 & 3. 表單送出處理與輸入驗證
+        function handleOrderSubmit(event) {
+            event.preventDefault();
+
+            const seatInput = document.getElementById('seatNumber').value;
+            const itemInput = document.getElementById('itemId').value;
+
+            const seat = parseInt(seatInput, 10);
+            const itemId = parseInt(itemInput, 10);
+
+            // 2. 座號為 0：結束訂餐登記
+            if (seat === 0) {
+                endOrderingProcess();
+                return;
+            }
+
+            // 3. 輸入驗證 - 座號 (1 ~ 50)
+            if (isNaN(seat) || seat < 1 || seat > 50) {
+                showAlert("⚠️ 座號不合法！請輸入 1 至 50 之間的數字（輸入 0 可結束登記）。", 'error');
+                return;
+            }
+
+            // 3. 輸入驗證 - 餐點編號 (1 ~ 5)
+            const menuItem = menuItems.find(i => i.id === itemId);
+            if (isNaN(itemId) || !menuItem) {
+                showAlert("⚠️ 餐點編號不合法！請輸入 1 至 5 之間的餐點編號。", 'error');
+                return;
+            }
+
+            // 驗證成功：記錄訂單
+            orders.push({
+                seat: seat,
+                itemId: menuItem.id,
+                name: menuItem.name,
+                price: menuItem.price,
+                timestamp: new Date()
+            });
+
+            hideAlert();
+            showAlert(`✅ 已成功登記：${seat} 號座號 - ${menuItem.name} ($${menuItem.price})`, 'success');
+
+            // 重置輸入欄位
+            document.getElementById('itemId').value = '';
+            document.getElementById('seatNumber').value = '';
+            document.getElementById('seatNumber').focus();
+
+            updateLogTable();
+            renderReport();
+        }
+
+        // 結束訂餐 (座號 0)
+        function endOrderingProcess() {
+            hideAlert();
+            showAlert(`ℹ️ 訂餐登記已結束！全班目前共完成 ${orders.length} 筆訂購。`, 'warning');
+            document.getElementById('seatNumber').value = '0';
+            document.getElementById('itemId').value = '';
+        }
+
+        // 刪除單筆紀錄
+        function removeOrder(index) {
+            orders.splice(index, 1);
+            updateLogTable();
+            renderReport();
+            showAlert("已移除該筆點餐紀錄", 'warning');
+        }
+
+        // 清空所有紀錄
+        function clearAllOrders() {
+            if (orders.length === 0) return;
+            orders = [];
+            updateLogTable();
+            renderReport();
+            hideAlert();
+            showAlert("已重置所有點餐紀錄", 'warning');
+        }
+
+        // 更新點餐明細列表
+        function updateLogTable() {
+            const tbody = document.getElementById('orderLogBody');
+            const emptyPrompt = document.getElementById('emptyLogPrompt');
+
+            if (orders.length === 0) {
+                tbody.innerHTML = '';
+                emptyPrompt.classList.remove('hidden');
+                return;
+            }
+
+            emptyPrompt.classList.add('hidden');
+            tbody.innerHTML = orders.map((order, index) => `
+                <tr class="hover:bg-slate-50/80 transition-colors">
+                    <td class="py-2.5 px-3 font-semibold text-slate-700">${order.seat} 號</td>
+                    <td class="py-2.5 px-3 text-slate-800">${order.name}</td>
+                    <td class="py-2.5 px-3 text-right text-slate-600">$${order.price}</td>
+                    <td class="py-2.5 px-3 text-center">
+                        <button onclick="removeOrder(${index})" class="text-slate-400 hover:text-rose-600 transition-colors px-2 py-0.5 rounded hover:bg-rose-50" title="刪除">
+                            ✕
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 4. 結算報表計算與渲染
+        function renderReport() {
+            const reportTbody = document.getElementById('reportTableBody');
+            let grandTotal = 0;
+            const totalOrdersCount = orders.length;
+
+            const reportRowsHTML = menuItems.map(item => {
+                const count = orders.filter(o => o.itemId === item.id).length;
+                const subtotal = count * item.price;
+                grandTotal += subtotal;
+
+                return `
+                    <tr class="${count > 0 ? 'bg-slate-50/50' : ''} hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-4 font-mono font-medium text-slate-400">${item.id}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-800 flex items-center gap-2">
+                            <span>${item.icon}</span> ${item.name}
+                        </td>
+                        <td class="py-3 px-4 text-right text-slate-600">$${item.price}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="inline-block min-w-[2rem] px-2 py-0.5 rounded-full font-bold ${count > 0 ? 'bg-blue-100 text-blue-700' : 'text-slate-300'}">
+                                ${count}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-right font-bold ${subtotal > 0 ? 'text-slate-900' : 'text-slate-300'}">
+                            $${subtotal}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            reportTbody.innerHTML = reportRowsHTML;
+
+            // 輸出總金額與總筆數
+            document.getElementById('grandTotal').innerText = grandTotal.toLocaleString();
+            document.getElementById('totalOrderCount').innerText = totalOrdersCount;
+        }
+    </script>
+</body>
+</html>
